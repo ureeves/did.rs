@@ -1,26 +1,34 @@
 // DID grammar written in PEST style PEG. Translated to PEG from the ABNF rules
 // defined in https://w3c-ccg.github.io/did-spec/#generic-did-syntax
-path_abempty       = _{ "/"* }
-pct_encoded        = _{ "%" ~ ASCII_HEX_DIGIT ~ ASCII_HEX_DIGIT }
-unreserved         = _{ ASCII_ALPHA | ASCII_DIGIT | "-" | "." | "_" | "~" }
-sub_delims         = _{ "!" | "$" | "&" | "'" | "(" | ")" | "*" | "+" | "," |
-                       ";" | "="}
+pct_encoded   = { "%" ~ ASCII_HEX_DIGIT ~ ASCII_HEX_DIGIT }
+shard_char    = { path_char | "/" | "?" }
 
-pchar              = _{ unreserved | pct_encoded | sub_delims | ":" | "@" }
-query              = { ( pchar | "/" | "?")* }
-fragment           = { ( pchar | "/" | "?")* }
+path_char     = { ASCII_ALPHA | ASCII_DIGIT | "-" | "." | "_" | "~" | "!" |
+                  "$" | "&" | "'" | "(" | ")" | "*" | "+" | "," | ";" | "=" |
+                  ":" | "@" | pct_encoded }
+path_segment  = { path_char* }
 
-method_char        = _{ ASCII_ALPHA_LOWER | ASCII_DIGIT }
-method_name        = { method_char+ }
-idchar             = _{ ASCII_ALPHA | ASCII_DIGIT | "." | "-" | "_" }
-method_specific_id = { idchar* ~ (":" ~ idchar* )* }
+query_char    = { shard_char  }
+query         = { query_char* }
 
-param              = { param_name ~  ("=" ~ param_value)? }
-param_name         = { param_char+ }
-param_value        = { param_char* }
-param_char         = _{ ASCII_ALPHA | ASCII_DIGIT | pct_encoded |
-			           "." | "-" | "_" | ":" }
+fragment_char = { shard_char }
+fragment      = { fragment_char* }
 
-did                = { "did:" ~ method_name ~ ":" ~ method_specific_id }
-did_url            = { did ~ (";" ~ param)* ~ path_abempty ~ ("?" ~ query)? ~
-                      ("#" ~ fragment)? }
+method_char   = { ASCII_ALPHA_LOWER | ASCII_DIGIT }
+method        = { method_char+ }
+
+id_char       = { ASCII_ALPHA | ASCII_DIGIT | "." | "-" | "_" }
+id_segment    = { id_char* }
+
+param_char    = { ASCII_ALPHA | ASCII_DIGIT | "." | "-" | "_" | ":" |
+                  pct_encoded }
+param_name    = { param_char+ }
+param_value   = { param_char* }
+param         = { param_name ~  ("=" ~ param_value)? }
+
+did           = _{ "did:" ~ method ~ ":" ~
+                  (id_segment ~ (":" ~ id_segment )*) ~
+                  (";" ~ param)* ~
+                  ("/" ~ path_segment)* ~
+                  ("?" ~ query)? ~
+                  ("#" ~ fragment)? }

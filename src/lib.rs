@@ -15,10 +15,15 @@ use pest::error::Error as PestError;
 struct DIDParser;
 
 // Parsed decentralized identifier
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct DID {
     pub method: String,
-    pub specific_id: Option<String>,
+
+    pub id_segments: Vec<String>,
+    pub params: Vec<(String, Option<String>)>,
+
+    pub path_segments: Vec<String>,
+
     pub query: Option<String>,
     pub fragment: Option<String>
 }
@@ -29,10 +34,10 @@ impl DID {
     pub fn parse<'a, T>(input: T) -> Result<Self, ParserError>
         where T: Into<&'a str> {
             let input_str = input.into();
-            let pairs_res = DIDParser::parse(Rule::did_url, input_str);
+            let pairs_res = DIDParser::parse(Rule::did, input_str);
 
             match pairs_res {
-                Ok(pairs) => return Ok(pairs_to_did(pairs)),
+                Ok(pairs) => return Ok(pairs_to_parsed(pairs)),
                 Err(err)  => return Err(ParserError(err))
             }
     }
@@ -42,19 +47,39 @@ impl Into<String> for DID {
      fn into(self) -> String {
         let mut out: String = String::from("did:");
 
-        out = out + self.method.as_str() + ":";
-        match self.specific_id {
-            Some(id) => { out = out + id.as_str() },
-            None => {},
+        out = out + self.method.as_str();
+
+        if self.id_segments.is_empty() {
+            out = out + ":";
+        } else {
+            for id in self.id_segments.iter() {
+                out = out + ":" + id;
+            }
         }
-        out = out + "/";
+
+        if !self.params.is_empty() {
+            out = out + ";";
+            for param in self.params {
+                out = out + ";" + param.0.as_str();
+                match param.1 {
+                    Some(value) => out = out + "=" + value.as_str(),
+                    None => {}
+                }
+            }
+        }
+
+        for seg in self.path_segments {
+            out = out + "/" + seg.as_str();
+        }
+
         match self.query {
-            Some(q) => { out = out + "?" + q.as_str() },
-            None => {},
+            Some(q) => out = out + "?" + q.as_str(),
+            None => {}
         }
+
         match self.fragment {
-            Some(f) => { out = out + "#" + f.as_str() },
-            None => {},
+            Some(f) => out = out + "#" + f.as_str(),
+            None => {}
         }
 
         out
@@ -68,52 +93,76 @@ impl TryFrom<&str> for DID {
     }
 }
 
-fn pairs_to_did(pairs: Pairs<Rule>) -> DID {
+fn pairs_to_parsed(pairs: Pairs<Rule>) -> DID {
 
-    let mut method_name_str: &str = "";
-    let mut method_specific_id_str: &str = "";
-    let mut query_str: &str = "";
-    let mut fragment_str: &str = "";
+    let mut method: String = "".to_string();
+    let mut id_segments: Vec<String> = Vec::new();
+    let mut params: Vec<(String, Option<String>)> = Vec::new();
+    let mut path_segments: Vec<String> = Vec::new();
+    let mut query: Option<String> = None;
+    let mut fragment: Option<String> = None;
 
-    for did_url in pairs {
-        for pair in did_url.into_inner() {
-            match pair.as_rule() {
-                Rule::did => {
-                    println!("did: {}", pair.as_str());
-                    for inner_pair in pair.into_inner() {
-                        match inner_pair.as_rule() {
-                            Rule::method_name => {
-                                method_name_str = inner_pair.as_str()
-                            },
-                            Rule::method_specific_id => {
-                                method_specific_id_str = inner_pair.as_str()
-                            },
-                            _ => unreachable!("should not get here")
-                        }
-                    }
-                },
-                Rule::param => {}, // TODO: handle parameters
-                Rule::query => {
-                    query_str = pair.as_str();
-                },
-                Rule::fragment => {
-                    fragment_str = pair.as_str();
-                },
-                _ => panic!("unexpected token, should have failed parse")
+    for pair in pairs {
+        match pair.as_rule() {
+            Rule::method => {
+                method = pair.as_str().to_string();
             }
+            Rule::id_segment => {
+                id_segments.push(pair.as_str().to_string());
+            }
+            Rule::param => {
+                let mut inner = pair.into_inner();
+                let name = inner.next().expect("parameter with no name");
+
+                match inner.next() {
+                    Some(value) => {
+                        params.push((
+                            name.as_str().to_string(),
+                            Some(value.as_str().to_string())
+                        ));
+                    },
+                    None => {
+                        params.push((
+                            name.as_str().to_string(),
+                            None
+                        ));
+                    }
+                }
+            }
+            Rule::path_segment => {
+                path_segments.push(pair.as_str().to_string());
+            }
+            Rule::query => {
+                query = Some(pair.as_str().to_string());
+            }
+            Rule::fragment => {
+                fragment = Some(pair.as_str().to_string());
+            }
+            _ => unreachable!("unexpected inner rule in 'did'")
         }
     }
 
     DID {
-        method: String::from(method_name_str),
-        specific_id:
-            if method_specific_id_str.len() == 0 { None }
-            else { Some(String::from(method_specific_id_str)) },
-        query:
-            if query_str.len() == 0 { None }
-            else { Some(String::from(query_str)) },
-        fragment:
-            if fragment_str.len() == 0 { None }
-            else { Some(String::from(fragment_str)) }
+        method,
+        id_segments,
+        params,
+        path_segments,
+        query,
+        fragment
+    }
+}
+
+#[test]
+fn parse_unparse_parse() {
+    let did_str = "did:gaia:id0:id1:id2;hi;hello=;ha=1/segment0/segment1?whatis#fraggy";
+
+    match DID::parse(did_str) {
+        Ok(did) => {
+            println!("{:#?}", did);
+
+            let s: String = did.into();
+            println!("{}", s);
+        },
+        Err(e) => panic!(e)
     }
 }
