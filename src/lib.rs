@@ -26,7 +26,7 @@ pub struct DID {
 pub struct ParserError(PestError<Rule>);
 
 impl DID {
-    fn parse<'a, T>(input: T) -> Result<Self, ParserError>
+    pub fn parse<'a, T>(input: T) -> Result<Self, ParserError>
         where T: Into<&'a str> {
             let input_str = input.into();
             let pairs_res = DIDParser::parse(Rule::did_url, input_str);
