@@ -1,8 +1,10 @@
 [package]
 name = "did"
-version = "0.1.0"
+description = "Implements a parser for decentralized identifiers"
+version = "0.1.1"
 authors = ["Eduardo Leegwater Simões <eduardols@protonmail.com>"]
 edition = "2018"
+license = "MIT AND Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
