@@ -13,7 +13,7 @@ will be changed in the future to something more performant like
 use did_rs::DID;
 
 fn main() {
-    let d = DID::parse("did:example:").expect();
+    let d = DID::parse("did:example:").expect("failed");
     println!("{}", d);
 }
 ```

@@ -22,7 +22,7 @@
 //!
 //! # Examples
 //! ```
-//! use did::DID;
+//! use did_rs::DID;
 //! let d = DID::parse()
 //! ```
 use std::fmt;
