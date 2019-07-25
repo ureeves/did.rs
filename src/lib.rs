@@ -25,7 +25,7 @@ pub struct DID {
 }
 
 impl DID {
-    pub fn parse<'a, T>(input: T) -> Result<Self, String>
+    pub fn parse<T>(input: T) -> Result<Self, String>
         where T: fmt::Display {
             let input_str = input.to_string();
             let pairs_res = DIDParser::parse(Rule::did, &*input_str);
