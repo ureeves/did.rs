@@ -10,7 +10,7 @@ will be changed in the future to something more performant like
 ## Usage
 
 ```rust
-use did::DID;
+use did_rs::DID;
 
 fn main() {
     let d = DID::parse("did:example:").expect();
