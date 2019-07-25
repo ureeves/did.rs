@@ -1,4 +1,23 @@
+//! Implements a parser for decentralized identifiers.
+//!
+//! Given the fact that the
+//! [spec](https://w3c-ccg.github.io/did-spec/#generic-did-syntax) is still in
+//! draft this module implements the parser using
+//! [pest](https://github.com/pest-parser/pest), leading to less than ideal
+//! - but still quite ok - performance. This allows for quicker changes
+//! adjusting to the spec.
+//!
+//! When the spec is out of draft stage the parsing backend will be
+//! reimplemented using something like [nom](https://github.com/Geal/nom).
+//! However, the public interface should remain the same.
+//!
+//! # Examples
+//! ```
+//! use did::DID;
+//! let d = DID::parse()
+//! ```
 use std::fmt;
+use std::string::ToString;
 
 extern crate pest;
 #[macro_use]
@@ -11,22 +30,38 @@ use pest::iterators::Pairs;
 #[grammar = "grammar.pest"]
 struct DIDParser;
 
-// Parsed decentralized identifier
+/// Decentralized identifier as specified in the
+/// [spec](https://w3c-ccg.github.io/did-spec/#generic-did-syntax).
 pub struct DID {
+    /// [DID method](https://w3c-ccg.github.io/did-spec/#dfn-did-method)
     pub method: String,
 
+    /// The multiple segments of the method specific ID (parts separated by
+    /// ':'). At least one String must be here.
     pub id_segments: Vec<String>,
+
+    /// [DID Parameters](https://w3c-ccg.github.io/did-spec/#generic-did-parameter-names)
+    /// are separated by ';'. Has an optional value. Optional
     pub params: Vec<(String, Option<String>)>,
 
+    /// [DID Path](https://w3c-ccg.github.io/did-spec/#dfn-did-path) segments.
+    /// The parts separated by '/'. Optional.
     pub path_segments: Vec<String>,
 
+    /// [DID Query](https://w3c-ccg.github.io/did-spec/#dfn-did-query).
+    /// Optional.
     pub query: Option<String>,
+
+    /// [DID Fragment](https://w3c-ccg.github.io/did-spec/#dfn-did-fragment).
+    /// Optional.
     pub fragment: Option<String>
 }
 
 impl DID {
+    /// Parses a `DID` from anything that implements the `std::string::ToString`
+    /// trait.
     pub fn parse<T>(input: T) -> Result<Self, String>
-        where T: fmt::Display {
+        where T: ToString {
             let input_str = input.to_string();
             let pairs_res = DIDParser::parse(Rule::did, &*input_str);
 
@@ -77,6 +112,7 @@ impl fmt::Display for DID {
     }
 }
 
+// implements the parsing logic.
 fn pairs_to_parsed(pairs: Pairs<Rule>) -> DID {
 
     let mut method: String = "".to_string();
