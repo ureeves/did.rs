@@ -1,21 +1,17 @@
-use std::convert::{TryFrom};
+use std::fmt;
 
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
-#[allow(unused_imports)]
 use pest::Parser;
 use pest::iterators::Pairs;
-use pest::error::Error as PestError;
 
-#[allow(dead_code)]
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
 struct DIDParser;
 
 // Parsed decentralized identifier
-#[derive(Debug, PartialEq)]
 pub struct DID {
     pub method: String,
 
@@ -28,23 +24,21 @@ pub struct DID {
     pub fragment: Option<String>
 }
 
-pub struct ParserError(PestError<Rule>);
-
 impl DID {
-    pub fn parse<'a, T>(input: T) -> Result<Self, ParserError>
-        where T: Into<&'a str> {
-            let input_str = input.into();
-            let pairs_res = DIDParser::parse(Rule::did, input_str);
+    pub fn parse<'a, T>(input: T) -> Result<Self, String>
+        where T: fmt::Display {
+            let input_str = input.to_string();
+            let pairs_res = DIDParser::parse(Rule::did, &*input_str);
 
             match pairs_res {
                 Ok(pairs) => return Ok(pairs_to_parsed(pairs)),
-                Err(err)  => return Err(ParserError(err))
+                Err(err)  => return Err(err.to_string())
             }
     }
 }
 
-impl Into<String> for DID {
-     fn into(self) -> String {
+impl fmt::Display for DID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out: String = String::from("did:");
 
         out = out + self.method.as_str();
@@ -59,37 +53,30 @@ impl Into<String> for DID {
 
         if !self.params.is_empty() {
             out = out + ";";
-            for param in self.params {
+            for param in &self.params {
                 out = out + ";" + param.0.as_str();
-                match param.1 {
+                match &param.1 {
                     Some(value) => out = out + "=" + value.as_str(),
                     None => {}
                 }
             }
         }
 
-        for seg in self.path_segments {
+        for seg in &self.path_segments {
             out = out + "/" + seg.as_str();
         }
 
-        match self.query {
+        match &self.query {
             Some(q) => out = out + "?" + q.as_str(),
             None => {}
         }
 
-        match self.fragment {
+        match &self.fragment {
             Some(f) => out = out + "#" + f.as_str(),
             None => {}
         }
 
-        out
-     }
-}
-
-impl TryFrom<&str> for DID {
-    type Error = ParserError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        DID::parse(value)
+        write!(f, "{}", out)
     }
 }
 
@@ -149,20 +136,5 @@ fn pairs_to_parsed(pairs: Pairs<Rule>) -> DID {
         path_segments,
         query,
         fragment
-    }
-}
-
-#[test]
-fn parse_unparse_parse() {
-    let did_str = "did:gaia:id0:id1:id2;hi;hello=;ha=1/segment0/segment1?whatis#fraggy";
-
-    match DID::parse(did_str) {
-        Ok(did) => {
-            println!("{:#?}", did);
-
-            let s: String = did.into();
-            println!("{}", s);
-        },
-        Err(e) => panic!(e)
     }
 }
