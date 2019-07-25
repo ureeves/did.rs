@@ -51,14 +51,11 @@ impl fmt::Display for DID {
             }
         }
 
-        if !self.params.is_empty() {
-            out = out + ";";
-            for param in &self.params {
-                out = out + ";" + param.0.as_str();
-                match &param.1 {
-                    Some(value) => out = out + "=" + value.as_str(),
-                    None => {}
-                }
+        for param in &self.params {
+            out = out + ";" + param.0.as_str();
+            match &param.1 {
+                Some(value) => out = out + "=" + value.as_str(),
+                None => {}
             }
         }
 
